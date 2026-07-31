@@ -5,14 +5,32 @@ thanh toán) đều đi theo đúng khuôn này.
 
 ## Kiến trúc
 
+**Feature-first, layer-second.** Mỗi feature là một Nest module riêng; bên
+trong module mới chia ba tầng.
+
 ```
 src/
-  http/     controller — chỉ vào/ra HTTP: parse request, gọi domain, map response
-  domain/   service    — quy tắc nghiệp vụ. Không HTTP, không SQL
-  data/     repository — chỉ truy cập datasource
-  app.module.ts  wiring (chỗ duy nhất ba tầng gặp nhau)
-  main.ts        bootstrap, đọc cấu hình từ env
+  main.ts               bootstrap, đọc cấu hình từ env
+  app.module.ts         chỉ lắp ráp feature module, không chứa provider nào
+
+  database/             hạ tầng dùng chung, mọi feature đều import
+    database.module.ts  exports DbRepository
+    db.repository.ts
+
+  health/               một feature = một thư mục = một module
+    health.module.ts
+    http/               controller — chỉ vào/ra HTTP
+    domain/             service    — quy tắc nghiệp vụ, không HTTP, không SQL
+    data/               repository riêng của feature (health chưa cần)
 ```
+
+Vì sao **không** để phẳng `src/{http,domain,data}` ở cấp gốc: tới feature thứ
+tư thì `src/http/` có 4 controller lẫn lộn, `AppModule` gánh 12 provider, và
+sửa một thứ về "đơn hàng" phải nhảy qua 3 thư mục. Quan trọng hơn, gom hết vào
+`AppModule` thì **mất tính đóng gói của Nest**: provider trong một module vốn
+là private trừ khi `exports`. Ví dụ hiện tại `HealthService` không được export
+nên không feature nào khác inject được nó — đó là ranh giới thật, do DI
+container ép, không phải quy ước.
 
 Chiều phụ thuộc **chỉ đi vào trong**:
 
@@ -80,12 +98,14 @@ pnpm lint        # gồm cả kiểm tra chiều phụ thuộc giữa các tần
 
 ## Thêm một tính năng mới
 
-Ví dụ `products`, đi từ trong ra ngoài:
+Ví dụ `products` — tạo `src/products/`, đi từ trong ra ngoài:
 
 1. `data/product.repository.ts` — truy vấn DB, trả về dữ liệu thô
 2. `domain/product.service.ts` — quy tắc nghiệp vụ (giá, tồn kho, giảm giá)
 3. `http/product.controller.ts` — route, DTO + validation, map response
-4. Khai báo cả ba trong `app.module.ts`
+4. `products.module.ts` — `imports: [DatabaseModule]`, khai báo controller +
+   provider. Chỉ `exports` thứ mà feature khác thật sự cần
+5. Thêm `ProductsModule` vào `imports` của `app.module.ts` — **một dòng**
 
-Khi số file lớn lên, tách theo feature (`src/products/{http,domain,data}`)
-nhưng giữ nguyên chiều mũi tên.
+Rule lint dùng glob `src/**/<layer>/**` nên áp dụng tự động cho mọi feature
+mới, không phải khai báo lại.

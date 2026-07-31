@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { DbRepository } from '../data/db.repository';
+import { DbRepository } from '../../database/db.repository';
 
 /** Kết quả nghiệp vụ thuần — không phải HTTP response. */
 export interface HealthStatus {

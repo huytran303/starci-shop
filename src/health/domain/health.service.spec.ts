@@ -1,4 +1,4 @@
-import { DbRepository } from '../data/db.repository';
+import { DbRepository } from '../../database/db.repository';
 import { HealthService } from './health.service';
 
 describe('HealthService', () => {
