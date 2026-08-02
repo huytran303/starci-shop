@@ -137,3 +137,39 @@ rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
 
 Overall average: **60-90% token reduction** on common development operations.
 <!-- /rtk-instructions -->
+
+# Ghi lại hỏi & đáp kiến thức vào `docs/qa/`
+
+Khi người dùng hỏi một **câu hỏi kiến thức** về dự án, sau khi trả lời xong
+phải lưu lại cặp hỏi–đáp đó vào `docs/qa/`.
+
+## Thế nào là câu hỏi kiến thức
+
+Ghi lại khi câu hỏi thuộc dạng:
+
+- Một cơ chế/framework hoạt động ra sao ("`@Global()` khác singleton chỗ nào?")
+- Đánh đổi giữa các lựa chọn thiết kế ("nên để repository ở tầng nào?")
+- Vì sao code hiện tại làm theo cách này
+- Hiện trạng kiến trúc kèm phần giải thích khái niệm ("đã có config động chưa?")
+
+**Không** ghi lại:
+
+- Yêu cầu thực thi: "thêm endpoint X", "sửa lỗi Y", "chạy test"
+- Trạng thái tức thời: "test pass chưa", "file này ở đâu"
+- Trao đổi qua lại chỉ có nghĩa trong một phiên làm việc
+
+Ranh giới: câu trả lời còn giá trị sau 6 tháng thì ghi; không thì thôi.
+
+## Cách ghi
+
+1. Tạo `docs/qa/NNN-slug-khong-dau.md` — `NNN` là số kế tiếp, đệm 3 chữ số,
+   không tái sử dụng số đã xoá.
+2. Theo đúng cấu trúc của các file có sẵn: tiêu đề `# NNN — Chủ đề`, dòng
+   `**Ngày:**` (ngày thật, dạng `YYYY-MM-DD`), dòng `**Từ khoá:**`, rồi mục
+   `## Câu hỏi` (trích nguyên văn câu hỏi) và `## Trả lời`.
+3. Thêm một dòng vào bảng trong `docs/README.md`.
+4. Viết bằng tiếng Việt, khớp với ngôn ngữ comment trong source.
+
+Trả lời trong hội thoại trước, ghi file sau — và nói cho người dùng biết đã
+lưu vào file nào. Nếu chủ đề trùng với một file đã có, cập nhật file đó thay
+vì tạo file mới.
