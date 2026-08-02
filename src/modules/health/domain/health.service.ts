@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { DbRepository } from '../../database/db.repository';
+import { HealthDbRepository } from '../data/health.db.repository';
 
 /** Kết quả nghiệp vụ thuần — không phải HTTP response. */
 export interface HealthStatus {
@@ -10,13 +10,13 @@ export interface HealthStatus {
 /**
  * Tầng DOMAIN — quy tắc nghiệp vụ.
  *
- * Phụ thuộc vào trong (`data/`), không bao giờ ra ngoài: không import
- * `@nestjs/common`'s HttpException, không biết status code, không biết
- * request/response.
+ * Phụ thuộc vào trong (`data/` của chính module này), không bao giờ ra ngoài:
+ * không import `@nestjs/common`'s HttpException, không biết status code, không
+ * biết request/response, cũng không cầm trực tiếp connection dùng chung.
  */
 @Injectable()
 export class HealthService {
-  constructor(private readonly db: DbRepository) {}
+  constructor(private readonly db: HealthDbRepository) {}
 
   /**
    * Liveness: "process này còn sống không?"

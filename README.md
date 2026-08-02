@@ -17,12 +17,22 @@ src/
     database.module.ts  exports DbRepository
     db.repository.ts
 
-  health/               một feature = một thư mục = một module
-    health.module.ts
-    http/               controller — chỉ vào/ra HTTP
-    domain/             service    — quy tắc nghiệp vụ, không HTTP, không SQL
-    data/               repository riêng của feature (health chưa cần)
+  modules/              toàn bộ feature nằm ở đây, mỗi thư mục con là 1 module
+    health/             một feature = một thư mục = một module
+      health.module.ts  đóng gói: khai báo controller + provider, quyết định exports
+      http/             health.controller.ts      — chỉ vào/ra HTTP
+      domain/           health.service.ts         — nghiệp vụ, không HTTP, không SQL
+      data/             health.db.repository.ts   — truy vấn DB của riêng health
+
+    products/           thêm feature mới = thêm đúng một thư mục theo khuôn này
+      http/ domain/ data/ + products.module.ts
 ```
+
+Hai tầng data không lẫn nhau: `src/database/` là **hạ tầng** (connection, pool,
+transaction) — không thuộc feature nào; `modules/*/data/` là **repository của
+feature** — chỗ duy nhất chứa câu truy vấn phục vụ nghiệp vụ đó. `domain/` chỉ
+nói chuyện với repository của chính module mình, không cầm trực tiếp
+`DbRepository`. Nhờ vậy đổi Postgres sang Prisma chỉ sửa `src/database/`.
 
 Vì sao **không** để phẳng `src/{http,domain,data}` ở cấp gốc: tới feature thứ
 tư thì `src/http/` có 4 controller lẫn lộn, `AppModule` gánh 12 provider, và
@@ -83,7 +93,7 @@ trong khi lỗi nằm ở chỗ khác — biến một sự cố DB thành một
 
 Việc kiểm tra dependency thuộc về **readiness** ("instance này nhận traffic
 được chưa?"). `HealthService.checkReadiness()` đã có sẵn và gọi
-`DbRepository.ping()`; endpoint `GET /ready` sẽ được mở khi gắn DB thật.
+`HealthDbRepository.ping()`; endpoint `GET /ready` sẽ được mở khi gắn DB thật.
 
 `/health` nằm **ngoài** tiền tố `API_PREFIX`, nên đường dẫn probe luôn là
 `/health` chứ không phải `/api/health`.
@@ -98,9 +108,9 @@ pnpm lint        # gồm cả kiểm tra chiều phụ thuộc giữa các tần
 
 ## Thêm một tính năng mới
 
-Ví dụ `products` — tạo `src/products/`, đi từ trong ra ngoài:
+Ví dụ `products` — tạo `src/modules/products/`, đi từ trong ra ngoài:
 
-1. `data/product.repository.ts` — truy vấn DB, trả về dữ liệu thô
+1. `data/product.db.repository.ts` — truy vấn DB, trả về dữ liệu thô
 2. `domain/product.service.ts` — quy tắc nghiệp vụ (giá, tồn kho, giảm giá)
 3. `http/product.controller.ts` — route, DTO + validation, map response
 4. `products.module.ts` — `imports: [DatabaseModule]`, khai báo controller +
