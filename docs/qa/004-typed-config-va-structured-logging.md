@@ -15,6 +15,9 @@
 
 ## Trả lời
 
+> Bản tra cứu đầy đủ (checklist thêm biến env, bảng đánh đổi, bẫy thường gặp):
+> [`guides/001-config-va-logging.md`](../guides/001-config-va-logging.md).
+
 Hai đảm bảo cần đạt:
 
 1. **Config sai → shop không boot.** Không có trạng thái "đang chạy với config

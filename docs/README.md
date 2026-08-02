@@ -2,6 +2,17 @@
 
 Nơi lưu kiến thức tích luỹ trong quá trình làm dự án.
 
+## `guides/` — Tổng hợp theo chủ đề
+
+Trong khi `qa/` ghi lại từng câu hỏi rời rạc theo dòng thời gian, `guides/` gom
+một chủ đề thành tài liệu tra cứu hoàn chỉnh: bản đồ file, vòng đời, checklist,
+bảng đánh đổi, bẫy thường gặp. Đọc một file là đủ dùng, không phải ghép từ
+nhiều bài Q&A.
+
+| # | Chủ đề | Nội dung |
+|---|--------|----------|
+| [001](guides/001-config-va-logging.md) | Config & Logging | typed config fail-fast với zod, structured logging với pino, correlation id qua `AsyncLocalStorage` |
+
 ## `qa/` — Hỏi & đáp kiến thức
 
 Mỗi file là một câu hỏi về **mặt kiến thức** (khái niệm, pattern, đánh đổi
