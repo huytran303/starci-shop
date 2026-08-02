@@ -39,7 +39,7 @@ src/logging/
   pino.provider.ts         # pino gốc: JSON, redact secret, pretty ở dev
   app-logger.service.ts    # adapter LoggerService của Nest -> pino
   request-id.middleware.ts # sinh/nhận requestId, mở ALS context
-  logging.module.ts        # @Global, đăng ký middleware cho '{*path}'
+  logging.module.ts        # @Global; middleware gắn ở app.setup.ts (xem 007)
 ```
 
 ### Đảm bảo 1 — fail fast
@@ -126,8 +126,11 @@ thấy field đó có tồn tại.
 - `Object.freeze` kết quả validate → không service nào mutate config lúc runtime.
 - `bufferLogs: true` + `app.useLogger()` → log nội bộ Nest cũng ra JSON, không
   bị lẫn hai định dạng trong một lần boot.
-- `forRoutes('{*path}')` — cú pháp path-to-regexp v8 (Express 5 của Nest 11);
-  `'*'` kiểu cũ vẫn chạy nhưng in warning deprecation.
+- ~~`forRoutes('{*path}')` — cú pháp path-to-regexp v8 (Express 5 của Nest 11);
+  `'*'` kiểu cũ vẫn chạy nhưng in warning deprecation.~~ **Đã bỏ:**
+  `setGlobalPrefix` áp tiền tố lên cả middleware kiểu Nest nên `forRoutes` bỏ
+  sót mọi đường dẫn ngoài `/api`. Nay gắn bằng `app.use()` ở
+  `src/app.setup.ts` — xem [007](007-global-prefix-nuot-middleware.md).
 
 ### Còn có thể làm thêm
 

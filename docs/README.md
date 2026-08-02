@@ -34,3 +34,5 @@ Quy tắc đặt tên: `NNN-slug-khong-dau.md`, số tăng dần, không tái s�
 | [003](qa/003-luong-code-tu-main-den-response.md) | Luồng code từ `main.ts` đến HTTP response | bootstrap, DI, module graph, request lifecycle |
 | [004](qa/004-typed-config-va-structured-logging.md) | Typed config fail-fast + structured logging có correlation id | zod, validation, fail-fast, pino, correlation id, AsyncLocalStorage |
 | [005](qa/005-vi-sao-log-boot-cua-nest-trong-khac-thuong.md) | Vì sao log boot của Nest trông khác thường | bufferLogs, pino-pretty, setGlobalPrefix, bootstrap |
+| [006](qa/006-demo-luong-chay-that-module-va-layered.md) | Demo luồng chạy thật: logging, module pattern, layered pattern | demo, correlation id, module pattern, layered pattern, exports, fail-fast |
+| [007](qa/007-global-prefix-nuot-middleware.md) | `setGlobalPrefix` nuốt middleware, và cách phát hiện ra | middleware, setGlobalPrefix, forRoutes, app.use, smoke test, bằng chứng |

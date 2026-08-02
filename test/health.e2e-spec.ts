@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
 import { REQUEST_ID_HEADER } from '../src/logging/request-id.middleware';
 
 describe('GET /health (e2e)', () => {
@@ -11,9 +12,10 @@ describe('GET /health (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 
-    app = moduleRef.createNestApplication();
-    // Giống main.ts: /health phải nằm ngoài tiền tố /api.
-    app.setGlobalPrefix('api', { exclude: ['health'] });
+    // Dùng đúng wiring của `main.ts` (prefix, pipe, middleware correlation id)
+    // thay vì chép lại vài dòng — chép lại chính là cách test từng xanh trên
+    // một app thiếu middleware.
+    app = configureApp(moduleRef.createNestApplication());
     await app.init();
   });
 

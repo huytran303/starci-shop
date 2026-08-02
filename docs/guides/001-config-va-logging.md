@@ -35,7 +35,7 @@ src/logging/
   pino.provider.ts          logger gốc: JSON, redact, pretty ở dev
   app-logger.service.ts     adapter LoggerService (Nest) -> pino
   request-id.middleware.ts  sinh/nhận requestId, mở ALS context
-  logging.module.ts         @Global — đăng ký middleware cho '{*path}'
+  logging.module.ts         @Global — middleware gắn ở app.setup.ts (xem qa/007)
 
 .env.example   tài liệu, được commit
 .env.test      giá trị giả cho test, ĐƯỢC commit
@@ -247,7 +247,7 @@ timestamp của log boot để đo thời gian khởi động**. Chi tiết: [`q
 | Gọi logger trần trong service | Rớt requestId | Inject `AppLogger` |
 | Bắt lỗi zod rồi chạy tiếp | App boot nửa-cấu-hình | Để nó exit khác 0 |
 | Quên `.env.test` | Clone mới chạy `pnpm test` là exit 1 | Biến bắt buộc phải có giá trị giả |
-| `forRoutes('*')` | Warning deprecation (Express 5) | `forRoutes('{*path}')` |
+| `forRoutes('{*path}')` cho middleware toàn cục | `setGlobalPrefix` áp tiền tố lên cả middleware → bỏ sót `/`, `/favicon.ico`, mọi URL ngoài `/api` | `app.use()` ở `src/app.setup.ts` — xem [qa/007](../qa/007-global-prefix-nuot-middleware.md) |
 | `messageFormat` in field không có trong `ignore` | Field hiện hai lần mỗi dòng | Field nào đã in ở `messageFormat` thì phải nằm trong `ignore` |
 
 ---

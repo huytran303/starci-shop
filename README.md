@@ -10,7 +10,8 @@ trong module mới chia ba tầng.
 
 ```
 src/
-  main.ts               bootstrap: dựng logger -> cấu hình app -> listen
+  main.ts               bootstrap: create -> configureApp -> listen
+  app.setup.ts          mọi cấu hình cấp app, để e2e dựng app GIỐNG HỆT prod
   app.module.ts         chỉ lắp ráp module, không chứa provider nào
 
   config/               hạ tầng cross-cutting @Global — cấu hình đã validate
@@ -39,6 +40,10 @@ src/
 
     products/           thêm feature mới = thêm đúng một thư mục theo khuôn này
       http/ domain/ data/ + products.module.ts
+
+test/
+  health.e2e-spec.ts    e2e in-memory, dùng lại configureApp của main.ts
+  smoke.e2e-spec.ts     spawn process thật — exit code, stdout JSON, redact
 
 docs/                   kiến thức tích luỹ — guides/ tra cứu, qa/ hỏi & đáp
 ```
@@ -101,13 +106,22 @@ pnpm build && pnpm start:prod
 Toàn bộ env được khai báo trong **một** zod schema (`src/config/env.schema.ts`)
 và validate **một lần lúc boot**. Thiếu hoặc sai một biến thì process in danh
 sách lỗi rồi thoát với exit code 1 — không có trạng thái "chạy với config nửa
-vời":
+vời".
+
+Chạy `DATABASE_URL=mysql://user:pass@localhost:3306/db JWT_SECRET=ngan pnpm start`:
 
 ```
 [FATAL] Cấu hình môi trường không hợp lệ — không thể khởi động:
-  - DATABASE_URL: thiếu biến môi trường bắt buộc
-  - JWT_SECRET: thiếu biến môi trường bắt buộc
+  - DATABASE_URL: DATABASE_URL phải bắt đầu bằng postgres:// hoặc postgresql://
+  - JWT_SECRET: JWT_SECRET phải dài tối thiểu 32 ký tự
+Xem .env.example để biết danh sách biến bắt buộc.
 ```
+
+`echo $?` ra `1`. Không có dòng `Starting Nest application` nào phía trên — mọi
+lỗi được liệt kê một lượt để sửa một vòng là xong, thay vì boot-sửa-boot-sửa
+từng biến. Luồng: `config.module.ts:29` (`validate: validateEnvOrExit`) →
+`env.validation.ts:73` (`process.exit(1)`). Nó **không** nằm trong `main.ts`:
+Nest gọi lúc nạp `ConfigModule`, tức trước cả `NestFactory.create()`.
 
 | Biến | Bắt buộc | Mặc định |
 |---|---|---|
@@ -129,12 +143,24 @@ Thêm một biến mới: xem checklist trong
 
 ## Logging
 
-Log JSON có cấu trúc qua pino, mỗi request mang một `x-request-id`:
+Log JSON có cấu trúc qua pino, mỗi request mang một `x-request-id`.
+
+Output thật, chạy `NODE_ENV=production PORT=3198 LOG_LEVEL=debug pnpm start` rồi
+`curl -D - -H 'authorization: Bearer SIEU-BI-MAT' http://127.0.0.1:3198/health`:
+
+```
+HTTP/1.1 200 OK
+x-request-id: 9e16ede4-c5a1-4ad6-bf8b-a7335627802e
+```
 
 ```json
-{"level":"debug","requestId":"abc-123","context":"HealthService","msg":"kiểm tra liveness"}
-{"level":"info","requestId":"abc-123","method":"GET","url":"/health","statusCode":200,"durationMs":3.9}
+{"level":"debug","time":"2026-08-02T10:07:55.934Z","service":"starci-shop","env":"production","pid":53805,"requestId":"9e16ede4-c5a1-4ad6-bf8b-a7335627802e","context":"HealthService","msg":"kiểm tra liveness"}
+{"level":"info","time":"2026-08-02T10:07:55.935Z","service":"starci-shop","env":"production","pid":53805,"requestId":"9e16ede4-c5a1-4ad6-bf8b-a7335627802e","method":"GET","url":"/health","statusCode":200,"durationMs":1.67,"msg":"request hoàn tất"}
 ```
+
+Ba thứ đáng chú ý trong hai dòng trên: `requestId` khớp header trả về cho
+client; `HealthService.checkLiveness()` **không nhận `req`** mà dòng log của nó
+vẫn có id; và chuỗi `SIEU-BI-MAT` không xuất hiện ở bất kỳ đâu.
 
 - Id lấy từ header `x-request-id` của upstream nếu có, không thì tự sinh UUID —
   nhờ vậy một request đi qua nhiều service vẫn chung một id. Id được trả lại
@@ -142,8 +168,16 @@ Log JSON có cấu trúc qua pino, mỗi request mang một `x-request-id`:
 - `AsyncLocalStorage` giữ id xuyên các tầng, nên service ở tầng sâu inject
   `AppLogger` là log ra có id, **không phải nhận `req` làm tham số**.
 - `redact` che `authorization`, `cookie`, `password`, `DATABASE_URL`,
-  `JWT_SECRET`. Vẫn không được log nguyên `req` hay connection string.
+  `JWT_SECRET`, `token`. Vẫn không được log nguyên `req` hay connection string.
 - Ngoài production, `pino-pretty` render lại cho dễ đọc trên terminal.
+
+> **Middleware correlation id gắn bằng `app.use()` trong
+> [`src/app.setup.ts`](src/app.setup.ts), không phải `MiddlewareConsumer.forRoutes()`.**
+> Nest áp `setGlobalPrefix` lên cả middleware đăng ký kiểu Nest, nên
+> `forRoutes('{*path}')` chỉ khớp `/api/**` và các route trong `exclude` —
+> `/`, `/favicon.ico`, URL gõ sai đều không có log lẫn `x-request-id`. Đây từng
+> là lỗi thật trong repo này; `test/smoke.e2e-spec.ts` khoá lại để nó không
+> quay về.
 
 > **Log boot của Nest đều mang cùng một timestamp.** Đó là do `bufferLogs:
 > true` — buffer được xả một lượt sau `useLogger()`, nên timestamp là lúc
@@ -177,6 +211,34 @@ pnpm test        # unit — logic từng tầng, chạy cô lập
 pnpm test:e2e    # e2e  — bật app thật, gọi HTTP thật
 pnpm lint        # gồm cả kiểm tra chiều phụ thuộc giữa các tầng
 ```
+
+`test/smoke.e2e-spec.ts` không dựng app trong bộ nhớ mà `spawn` hẳn một tiến
+trình Node chạy `src/main.ts`, rồi assert trên **stdout và exit code thật**.
+Những tiêu chí quan trọng nhất chỉ tồn tại ở mức process và không thể chứng
+minh bằng test in-memory: `process.exit(1)` sẽ giết luôn jest, còn log JSON thì
+không đi qua stdout thật.
+
+## Bằng chứng
+
+Mỗi đảm bảo dưới đây trỏ tới code thi hành nó và test khoá nó lại. Chạy
+`pnpm test && pnpm test:e2e` để tự xác minh, không phải tin những dòng log dán
+trong README này.
+
+| Đảm bảo | Thi hành ở | Khoá bởi |
+|---|---|---|
+| Env sai → in lỗi, `exit 1`, **không** listen | `config/config.module.ts:26` → `config/env.validation.ts:73` | `test/smoke.e2e-spec.ts` (3 test, assert exit code + `stdout` không có `Nest application successfully started`) |
+| zod validate **một lần** lúc boot, không nuốt lỗi | `config/env.schema.ts`, `config/env.validation.ts:31` | `config/env.validation.spec.ts` (7 test) |
+| Mọi dòng log là JSON parse được | `logging/pino.provider.ts:25` | `test/smoke.e2e-spec.ts` — `JSON.parse` từng dòng stdout của process thật |
+| Mỗi request có `requestId`, trả về qua `x-request-id` | `logging/request-id.middleware.ts:30,33` | `test/smoke.e2e-spec.ts`, `test/health.e2e-spec.ts` |
+| `requestId` đi xuyên tầng qua child logger + ALS | `request-id.middleware.ts:35,62`, `logging/request-context.ts:24` | `logging/request-id.middleware.spec.ts`, và smoke assert dòng `context:"HealthService"` mang đúng id |
+| Nhận lại `x-request-id` của upstream, không sinh mới | `request-id.middleware.ts:29-30` | cả ba file test trên |
+| Middleware chạy cho **mọi** đường dẫn, kể cả ngoài `/api` | `app.setup.ts:35-36` | `test/smoke.e2e-spec.ts` (4 đường dẫn, gồm `/` và `/favicon.ico`) |
+| Secret bị che, không lọt vào log | `logging/pino.provider.ts:47` (`redact`) | `logging/pino.provider.spec.ts` — 12 test, mỗi path một test, chạy trên **chính** `createRootLogger` |
+| `LOG_LEVEL` lọc output theo ngưỡng | `logging/pino.provider.ts:29` | `logging/pino.provider.spec.ts` (3 test) |
+| Chiều phụ thuộc `http → domain → data` | `eslint.config.mjs` (`no-restricted-imports`) | `pnpm lint` |
+
+Log và thông báo lỗi trích trong README này được copy nguyên văn từ output
+thật, kèm lệnh sinh ra chúng — không phải viết tay minh hoạ.
 
 ## Thêm một tính năng mới
 
