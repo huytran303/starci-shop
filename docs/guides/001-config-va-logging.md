@@ -217,6 +217,10 @@ string.
 ("Nest application successfully started", route mapping, lỗi DI) cũng đi qua
 pino — không bị lẫn hai định dạng trong một lần boot.
 
+⚠️ Hệ quả: mọi dòng log boot mang **cùng một timestamp** — thời điểm buffer
+được xả, không phải lúc sự kiện xảy ra. Thứ tự vẫn đúng, nhưng **đừng dùng
+timestamp của log boot để đo thời gian khởi động**. Chi tiết: [`qa/005`](../qa/005-vi-sao-log-boot-cua-nest-trong-khac-thuong.md).
+
 ---
 
 ## 5. Đánh đổi đã cân nhắc
@@ -244,6 +248,7 @@ pino — không bị lẫn hai định dạng trong một lần boot.
 | Bắt lỗi zod rồi chạy tiếp | App boot nửa-cấu-hình | Để nó exit khác 0 |
 | Quên `.env.test` | Clone mới chạy `pnpm test` là exit 1 | Biến bắt buộc phải có giá trị giả |
 | `forRoutes('*')` | Warning deprecation (Express 5) | `forRoutes('{*path}')` |
+| `messageFormat` in field không có trong `ignore` | Field hiện hai lần mỗi dòng | Field nào đã in ở `messageFormat` thì phải nằm trong `ignore` |
 
 ---
 

@@ -72,8 +72,13 @@ function createRootLogger(env: EnvService): Logger {
             colorize: true,
             singleLine: true,
             translateTime: 'HH:MM:ss.l',
-            ignore: 'pid,service,env',
-            messageFormat: '{context} {msg}',
+            // `context` phải nằm trong `ignore`: `messageFormat` đã in nó ra
+            // đầu dòng rồi, không có dòng này thì nó hiện HAI lần —
+            // `RoutesResolver Mapped ... {"context":"RoutesResolver"}`.
+            ignore: 'pid,service,env,context',
+            // `{if}...{end}`: dòng nào không có `context` (log từ middleware)
+            // thì không bị thừa khoảng trắng ở đầu message.
+            messageFormat: '{if context}{context} {end}{msg}',
           },
         },
   });
