@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
+import { REQUEST_ID_HEADER } from '../src/logging/request-id.middleware';
 
 describe('GET /health (e2e)', () => {
   let app: INestApplication;
@@ -29,5 +30,27 @@ describe('GET /health (e2e)', () => {
 
   it('không bị dính tiền tố /api', async () => {
     await request(app.getHttpServer()).get('/api/health').expect(404);
+  });
+
+  it('trả requestId về cho client qua x-request-id', async () => {
+    const res = await request(app.getHttpServer()).get('/health');
+
+    // Client dán id này vào ticket là ta grep ra đúng mọi dòng log của họ.
+    expect(res.headers[REQUEST_ID_HEADER]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('mỗi request một id khác nhau', async () => {
+    const a = await request(app.getHttpServer()).get('/health');
+    const b = await request(app.getHttpServer()).get('/health');
+
+    expect(a.headers[REQUEST_ID_HEADER]).not.toBe(b.headers[REQUEST_ID_HEADER]);
+  });
+
+  it('giữ nguyên id do upstream truyền sang', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/health')
+      .set(REQUEST_ID_HEADER, 'id-tu-gateway');
+
+    expect(res.headers[REQUEST_ID_HEADER]).toBe('id-tu-gateway');
   });
 });

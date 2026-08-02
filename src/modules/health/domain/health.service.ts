@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { AppLogger } from '../../../logging/app-logger.service';
 import { HealthDbRepository } from '../data/health.db.repository';
 
 /** Kết quả nghiệp vụ thuần — không phải HTTP response. */
@@ -16,7 +17,10 @@ export interface HealthStatus {
  */
 @Injectable()
 export class HealthService {
-  constructor(private readonly db: HealthDbRepository) {}
+  constructor(
+    private readonly db: HealthDbRepository,
+    private readonly logger: AppLogger,
+  ) {}
 
   /**
    * Liveness: "process này còn sống không?"
@@ -27,6 +31,11 @@ export class HealthService {
    * readiness, xem `checkReadiness()`.
    */
   checkLiveness(): HealthStatus {
+    // Dòng log này KHÔNG nhận `req` từ đâu cả, nhưng khi chạy trong một
+    // request nó vẫn ra kèm `requestId` — bằng chứng correlation đi xuyên
+    // tầng mà không phải luồn tham số qua từng chữ ký hàm.
+    this.logger.debug('kiểm tra liveness', HealthService.name);
+
     return { status: 'ok' };
   }
 

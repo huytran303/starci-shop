@@ -3,9 +3,12 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Mọi file .env đều là secret, TRỪ .env.example (tài liệu) và .env.test
+# (toàn giá trị giả, cần commit để `pnpm test` chạy được trên clone mới).
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.test
 
 npm-debug.log*
 yarn-error.log*

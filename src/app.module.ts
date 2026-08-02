@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 
+import { AppConfigModule } from './config/config.module';
+import { LoggingModule } from './logging/logging.module';
 import { HealthModule } from './modules/health/health.module';
 
 /**
@@ -13,7 +14,12 @@ import { HealthModule } from './modules/health/health.module';
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, cache: true }),
+    // Thứ tự trong mảng này KHÔNG quyết định thứ tự khởi tạo (Nest tự giải
+    // dependency graph), nhưng đặt config đầu tiên phản ánh đúng ràng buộc
+    // thật: LoggingModule inject EnvService, nên config phải hợp lệ trước khi
+    // có logger. Env sai → chết ngay ở bước này, chưa kịp mở cổng nào.
+    AppConfigModule,
+    LoggingModule,
     HealthModule,
     // ProductsModule,
     // CartModule,
