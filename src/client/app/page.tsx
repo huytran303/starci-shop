@@ -1,4 +1,5 @@
 import { Button, Typography } from "@heroui/react";
+import { ThemeSwitcher } from "./theme-switcher";
 
 export default function Home() {
   return (
@@ -8,6 +9,7 @@ export default function Home() {
         Khung UI nền cho cửa hàng — mọi feature sau sẽ render ở đây.
       </Typography.Paragraph>
       <Button>Khám phá cửa hàng</Button>
+      <ThemeSwitcher />
     </main>
   );
 }

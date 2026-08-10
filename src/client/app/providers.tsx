@@ -2,11 +2,16 @@
 
 import { RouterProvider } from "@heroui/react";
 import { useRouter } from "next/navigation";
+import { ThemeProvider } from "next-themes";
 
-// HeroUI v3 needs no theme provider — this client wrapper wires React Aria's
-// RouterProvider to the Next router so HeroUI Links do client-side navigation.
-// Future providers (theme, toast, query...) stack inside here, not in layout.tsx.
+// Client wrapper stacking app-wide providers (theme, router; toast, query... later).
+// next-themes sets .dark/.light on <html> — HeroUI's dark variant keys off .dark,
+// with system preference as fallback, so attribute="class" + enableSystem matches.
 export function Providers({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  return <RouterProvider navigate={router.push}>{children}</RouterProvider>;
+  return (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <RouterProvider navigate={router.push}>{children}</RouterProvider>
+    </ThemeProvider>
+  );
 }
