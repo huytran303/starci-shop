@@ -44,6 +44,7 @@ async function bootstrap(): Promise<void> {
 
   logger.log(`StarCi Shop API đang chạy tại http://${host}:${port}`, 'Bootstrap');
   logger.log(`Liveness probe: GET http://${host}:${port}/health`, 'Bootstrap');
+  logger.log(`OpenAPI docs: http://${host}:${port}/docs`, 'Bootstrap');
 }
 
 bootstrap().catch((error: unknown) => {

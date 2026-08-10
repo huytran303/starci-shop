@@ -155,7 +155,7 @@ Nest gọi lúc nạp `ConfigModule`, tức trước cả `NestFactory.create()`
 | `NODE_ENV` | | `development` |
 | `PORT` | | `3000` |
 | `HOST` | | `0.0.0.0` |
-| `API_PREFIX` | | `api` |
+| `API_PREFIX` | | `api/v1` |
 | `DATABASE_URL` | ✅ | — |
 | `JWT_SECRET` | ✅ (≥32 ký tự) | — |
 | `LOG_LEVEL` | | `info` |
@@ -201,7 +201,7 @@ vẫn có id; và chuỗi `SIEU-BI-MAT` không xuất hiện ở bất kỳ đâ
 > **Middleware correlation id gắn bằng `app.use()` trong
 > [`src/server/app.setup.ts`](src/server/app.setup.ts), không phải
 > `MiddlewareConsumer.forRoutes()`.** Nest áp `setGlobalPrefix` lên cả
-> middleware đăng ký kiểu Nest, nên `forRoutes('{*path}')` chỉ khớp `/api/**`
+> middleware đăng ký kiểu Nest, nên `forRoutes('{*path}')` chỉ khớp `/api/v1/**`
 > và các route trong `exclude` — `/`, `/favicon.ico`, URL gõ sai đều không có
 > log lẫn `x-request-id`. Đây từng là lỗi thật trong repo này; bộ smoke test
 > từng khoá nó đã gỡ cùng `test/` — cẩn trọng khi đụng `app.setup.ts` (LOG-01
@@ -230,7 +230,20 @@ Việc kiểm tra dependency thuộc về **readiness** ("instance này nhận t
 `HealthDbRepository.ping()`; endpoint `GET /ready` sẽ được mở khi gắn DB thật.
 
 `/health` nằm **ngoài** tiền tố `API_PREFIX`, nên đường dẫn probe luôn là
-`/health` chứ không phải `/api/health`.
+`/health` chứ không phải `/api/v1/health`.
+
+## Tài liệu API
+
+```
+GET /docs       ->  Swagger UI
+GET /docs-json  ->  OpenAPI document (JSON)
+```
+
+Sinh từ code lúc boot (`@nestjs/swagger` introspect route graph trong
+[`src/server/app.setup.ts`](src/server/app.setup.ts)) nên không có file spec
+viết tay để lệch. Mọi route nghiệp vụ nằm dưới `/api/v1` (`API_PREFIX`) — thêm
+`v2` sau này không phá client đang gọi `v1`. Endpoint đổi thì decorator swagger
+cập nhật trong cùng PR (ARCH-03).
 
 ## Kiểm thử
 

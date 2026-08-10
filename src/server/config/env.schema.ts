@@ -26,8 +26,11 @@ export const envSchema = z.object({
   /** 0.0.0.0 để container bên ngoài gọi vào được. */
   HOST: z.string().min(1).default('0.0.0.0'),
 
-  /** Tiền tố route nghiệp vụ. `/health` luôn nằm ngoài tiền tố này. */
-  API_PREFIX: z.string().min(1).default('api'),
+  /**
+   * Tiền tố route nghiệp vụ, mang cả version: thêm v2 sau này không đụng
+   * client đang gọi v1. `/health` luôn nằm ngoài tiền tố này.
+   */
+  API_PREFIX: z.string().min(1).default('api/v1'),
 
   /**
    * Connection string tới Postgres.

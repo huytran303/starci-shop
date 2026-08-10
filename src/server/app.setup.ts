@@ -1,4 +1,5 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NextFunction, Request, Response } from 'express';
 
 import { EnvService } from './config/env.service';
@@ -42,6 +43,22 @@ export function configureApp(app: INestApplication): INestApplication {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }),
   );
+
+  /**
+   * OpenAPI sinh từ code, không phải file spec viết tay sẽ lệch:
+   * `createDocument` introspect đồ thị route lúc boot nên `/docs` luôn khớp
+   * code đang chạy. Phải đứng SAU `setGlobalPrefix` — set prefix sau khi tạo
+   * document thì doc liệt kê path không khớp đường thật.
+   *
+   * `/docs` nằm ngoài prefix (mặc định của `SwaggerModule.setup`): nó là tài
+   * liệu VỀ API chứ không phải một endpoint v1.
+   */
+  const openApiConfig = new DocumentBuilder()
+    .setTitle('StarCi Shop API')
+    .setDescription('API cho StarCi Shop — mọi route nghiệp vụ nằm dưới /api/v1.')
+    .setVersion('1.0')
+    .build();
+  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, openApiConfig));
 
   // Cho phép Nest chạy onModuleDestroy/onApplicationShutdown khi nhận SIGTERM,
   // để pod đóng connection gọn gàng thay vì bị cắt ngang.
