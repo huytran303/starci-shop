@@ -47,7 +47,7 @@ describe('validateEnv — kết quả trả về', () => {
     const env = validateEnv(validEnv());
 
     expect(env.HOST).toBe('0.0.0.0');
-    expect(env.API_PREFIX).toBe('api');
+    expect(env.API_PREFIX).toBe('api/v1');
     expect(env.LOG_LEVEL).toBe('info');
   });
 

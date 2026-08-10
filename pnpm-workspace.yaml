@@ -1,0 +1,4 @@
+# File config của pnpm (từ v10 settings nằm ở đây, không phải package.json).
+# @scarf/scarf là telemetry của subdependency — không bao giờ cần chạy build script.
+allowBuilds:
+  '@scarf/scarf': false
