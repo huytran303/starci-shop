@@ -29,7 +29,9 @@ const inwardOnly = (layer, forbidden) => ({
 });
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'coverage/**', 'node_modules/**', 'eslint.config.mjs'] },
+  // src/client là app Next.js độc lập — có ESLint riêng (eslint-config-next),
+  // parser ở đây không đọc được file ngoài tsconfig của server.
+  { ignores: ['dist/**', 'coverage/**', 'node_modules/**', 'eslint.config.mjs', 'src/client/**'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   eslintPluginPrettierRecommended,
