@@ -1,7 +1,7 @@
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
 import { EnvService } from './config/env.service';
 import { AppLogger } from './logging/app-logger.service';
 
@@ -30,28 +30,17 @@ async function bootstrap(): Promise<void> {
    */
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
-  // Từ đây trở đi mọi log — kể cả log nội bộ của Nest — đều là JSON có cấu trúc.
-  const logger = app.get(AppLogger);
-  app.useLogger(logger);
+  // Toàn bộ wiring nằm ở `configureApp` để e2e dựng được app **giống hệt** app
+  // này, thay vì tự chép lại vài dòng rồi trôi khỏi nhau.
+  configureApp(app);
 
   const env = app.get(EnvService);
   const port = env.get('PORT'); // number thật, không phải chuỗi "3000"
   const host = env.get('HOST');
-  const prefix = env.get('API_PREFIX');
-
-  // Mọi route nghiệp vụ sau này nằm dưới /api. `health` được loại trừ để
-  // probe vẫn đúng đường dẫn GET /health mà orchestrator mong đợi.
-  app.setGlobalPrefix(prefix, { exclude: ['health'] });
-
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }),
-  );
-
-  // Cho phép Nest chạy onModuleDestroy/onApplicationShutdown khi nhận SIGTERM,
-  // để pod đóng connection gọn gàng thay vì bị cắt ngang.
-  app.enableShutdownHooks();
 
   await app.listen(port, host);
+
+  const logger = app.get(AppLogger);
 
   logger.log(`StarCi Shop API đang chạy tại http://${host}:${port}`, 'Bootstrap');
   logger.log(`Liveness probe: GET http://${host}:${port}/health`, 'Bootstrap');

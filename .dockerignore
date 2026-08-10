@@ -1,0 +1,23 @@
+# Mọi thứ ở đây không được gửi sang Docker daemon khi build.
+# Tác dụng kép: build nhanh hơn, và không lỡ tay nhét secret vào image.
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Secret. Env của container do docker-compose bơm vào lúc chạy, không nướng
+# cứng vào image.
+.env
+.env.*
+!.env.example
+
+.git/
+.gitignore
+docs/
+*.md
+.codegraph/
+.rtk/
+.idea/
+.vscode/
+.DS_Store

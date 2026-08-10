@@ -1,0 +1,37 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks quét cả lịch sử — chỉ job này cần
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Cố ý KHÔNG có service Postgres ở job này: test "unit" nào chạm DB sẽ fail
+  # tại đây theo cấu tạo (STD-02). Chạy đúng một gate như local: pnpm check.
+  check:
+    runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
+    steps:
+      - uses: actions/checkout@v4
+      # corepack trước setup-node để `cache: pnpm` resolve được pnpm store
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
+
+  # Job integration (Postgres service) thêm cùng lúc với integration test đầu
+  # tiên — xem STD-02 trong .sdd/constitution.md.

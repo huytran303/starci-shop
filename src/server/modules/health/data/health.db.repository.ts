@@ -5,7 +5,7 @@ import { DbRepository } from '../../../database/db.repository';
 /**
  * Tầng DATA của riêng feature `health` — lớp trong cùng của module.
  *
- * Khác biệt với `DbRepository` ở `src/database/`: cái kia là hạ tầng dùng
+ * Khác biệt với `DbRepository` ở `src/server/database/`: cái kia là hạ tầng dùng
  * chung (connection, transaction, pool), không thuộc feature nào. File này là
  * chỗ duy nhất chứa câu truy vấn phục vụ nghiệp vụ health.
  *

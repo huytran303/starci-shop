@@ -5,10 +5,10 @@ import { LoggingModule } from './logging/logging.module';
 import { HealthModule } from './modules/health/health.module';
 
 /**
- * Root module: chỉ lắp ráp các feature module trong `src/modules/`, không tự
+ * Root module: chỉ lắp ráp các feature module trong `src/server/modules/`, không tự
  * chứa controller hay service nào.
  *
- * Thêm feature mới = tạo một thư mục trong `src/modules/` (http / domain /
+ * Thêm feature mới = tạo một thư mục trong `src/server/modules/` (http / domain /
  * data + `*.module.ts`) rồi thêm đúng một dòng vào `imports`. File này không
  * phình ra theo số lượng provider nữa.
  */

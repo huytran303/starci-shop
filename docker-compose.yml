@@ -1,0 +1,54 @@
+services:
+  postgres:
+    # Pin major. `latest` thì một ngày `docker pull` kéo về major mới và app gãy.
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: starci
+      POSTGRES_PASSWORD: starci
+      POSTGRES_DB: starci_shop
+    # Mở ra host để psql/DBeaver ở máy nối vào được. App trong compose KHÔNG
+    # cần dòng này — nó đi qua network nội bộ.
+    ports:
+      - '5432:5432'
+    volumes:
+      # Bắt buộc. Không có nó thì `docker compose down` là mất sạch dữ liệu.
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Postgres khởi động xong cổng 5432 vài giây trước khi thật sự nhận
+      # query. `depends_on` trần chỉ đợi container start, nên app sẽ connect
+      # trượt. `pg_isready` mới là điều kiện đúng.
+      test: ['CMD-SHELL', 'pg_isready -U starci -d starci_shop']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    # JWT_SECRET và các biến khác lấy từ .env ở host.
+    env_file: .env
+    environment:
+      # Ghi đè hai biến mà .env đặt cho trường hợp chạy `pnpm dev` ở host.
+      # `environment` thắng `env_file` khi trùng key.
+      #
+      # `postgres` là TÊN SERVICE ở trên, compose resolve nó thành IP container.
+      # Để `localhost` ở đây là app tự gọi chính nó — mỗi container có network
+      # namespace riêng.
+      DATABASE_URL: postgres://starci:starci@postgres:5432/starci_shop
+      # Cố định cổng trong container để khớp với mapping bên dưới.
+      PORT: 3000
+      # Ghi rõ ra dù .env cũng đang là `development`: Dockerfile đặt
+      # NODE_ENV=production, nhưng env_file ghi đè nó lúc chạy. Để dòng này
+      # ở đây thì việc "compose này chạy chế độ dev, log pretty" là một quyết
+      # định nhìn thấy được, chứ không phải tai nạn. Deploy thật thì đổi thành
+      # production (và không dùng file compose này).
+      NODE_ENV: development
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

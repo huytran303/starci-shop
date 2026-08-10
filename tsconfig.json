@@ -9,7 +9,7 @@
     "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./src/server",
     "incremental": true,
     // Phải nằm TRONG outDir. nest-cli.json đặt deleteOutDir=true nên dist/ bị
     // xoá mỗi lần build; nếu file này nằm ngoài, nó sống sót và tsc tưởng
@@ -28,6 +28,6 @@
     "esModuleInterop": true,
     "types": ["node", "jest"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/server/**/*"],
   "exclude": ["node_modules", "dist"]
 }

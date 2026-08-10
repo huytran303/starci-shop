@@ -173,3 +173,15 @@ Ranh giới: câu trả lời còn giá trị sau 6 tháng thì ghi; không thì
 Trả lời trong hội thoại trước, ghi file sau — và nói cho người dùng biết đã
 lưu vào file nào. Nếu chủ đề trùng với một file đã có, cập nhật file đó thay
 vì tạo file mới.
+
+# SDD (spec-driven development)
+
+- Luật dự án: `.sdd/constitution.md` — rule máy kiểm được nằm trong `pnpm check`
+  (constitution script + lint + test); rule đánh dấu `review` do người gác khi
+  review PR.
+- Feature mới: copy `.sdd/specs/_template.md` thành
+  `.sdd/specs/feat-{name}/SPEC.md` + `TASKS.md` **trước khi code**. Ví dụ mẫu:
+  `.sdd/specs/feat-health/`.
+- Quyết định kiến trúc ghi vào `.sdd/rfcs/ADR-NNN-*.md` — viết một lần, không
+  sửa lịch sử.
+- Definition of Done = `pnpm check` xanh.
