@@ -1,19 +1,21 @@
-# StarCi Shop — Backend
+# StarCi Shop
 
-NestJS API chia ba tầng. Mọi tính năng sau này (sản phẩm, giỏ hàng, đơn hàng,
-thanh toán) đều đi theo đúng khuôn này.
+Fullstack: `src/server` là API NestJS + Postgres, `src/client` giữ chỗ cho
+frontend. Dự án chạy theo quy trình spec-driven (SDD) — xem
+[`.sdd/constitution.md`](.sdd/constitution.md).
 
 ## Kiến trúc
 
 **Feature-first, layer-second.** Mỗi feature là một Nest module riêng; bên
-trong module mới chia ba tầng.
+trong module mới chia ba tầng. Quyết định này ghi ở
+[`.sdd/rfcs/ADR-001`](.sdd/rfcs/ADR-001-ba-tang-feature-first.md).
 
 ```
 src/
   client/               chỗ dành cho frontend — hiện là placeholder, chưa có code
   server/               toàn bộ backend NestJS
     main.ts             bootstrap: create -> configureApp -> listen
-    app.setup.ts        mọi cấu hình cấp app, để e2e dựng app GIỐNG HỆT prod
+    app.setup.ts        mọi cấu hình cấp app, một chỗ duy nhất
     app.module.ts       chỉ lắp ráp module, không chứa provider nào
 
     config/             hạ tầng cross-cutting @Global — cấu hình đã validate
@@ -40,13 +42,8 @@ src/
         domain/         health.service.ts         — nghiệp vụ, không HTTP, không SQL
         data/           health.db.repository.ts   — truy vấn DB của riêng health
 
-      products/         thêm feature mới = thêm đúng một thư mục theo khuôn này
-        http/ domain/ data/ + products.module.ts
-
-test/
-  health.e2e-spec.ts    e2e in-memory, dùng lại configureApp của main.ts
-  smoke.e2e-spec.ts     spawn process thật — exit code, stdout JSON, redact
-
+.sdd/                   quy trình SDD: constitution, specs, ADR
+scripts/                check-constitution.sh — máy kiểm gate L3
 docs/                   kiến thức tích luỹ — guides/ tra cứu, qa/ hỏi & đáp
 ```
 
@@ -55,19 +52,20 @@ trong ba tầng trên: mọi tầng đều được phép inject `EnvService` v�
 Đây là một trong số ít trường hợp `@Global()` đúng — chúng stateless và
 immutable nên không có rủi ro chia sẻ state ngoài ý muốn.
 
-Hai tầng data không lẫn nhau: `src/server/database/` là **hạ tầng** (connection, pool,
-transaction) — không thuộc feature nào; `modules/*/data/` là **repository của
-feature** — chỗ duy nhất chứa câu truy vấn phục vụ nghiệp vụ đó. `domain/` chỉ
-nói chuyện với repository của chính module mình, không cầm trực tiếp
-`DbRepository`. Nhờ vậy đổi Postgres sang Prisma chỉ sửa `src/server/database/`.
+Hai tầng data không lẫn nhau: `src/server/database/` là **hạ tầng** (connection,
+pool, transaction) — không thuộc feature nào; `modules/*/data/` là **repository
+của feature** — chỗ duy nhất chứa câu truy vấn phục vụ nghiệp vụ đó. `domain/`
+chỉ nói chuyện với repository của chính module mình, không cầm trực tiếp
+`DbRepository`. Nhờ vậy đổi cách truy cập Postgres chỉ sửa
+`src/server/database/`.
 
-Vì sao **không** để phẳng `src/server/{http,domain,data}` ở cấp gốc: tới feature thứ
-tư thì `src/server/http/` có 4 controller lẫn lộn, `AppModule` gánh 12 provider, và
-sửa một thứ về "đơn hàng" phải nhảy qua 3 thư mục. Quan trọng hơn, gom hết vào
-`AppModule` thì **mất tính đóng gói của Nest**: provider trong một module vốn
-là private trừ khi `exports`. Ví dụ hiện tại `HealthService` không được export
-nên không feature nào khác inject được nó — đó là ranh giới thật, do DI
-container ép, không phải quy ước.
+Vì sao **không** để phẳng `src/server/{http,domain,data}` ở cấp gốc: tới
+feature thứ tư thì `http/` có 4 controller lẫn lộn, `AppModule` gánh 12
+provider, và sửa một thứ về "đơn hàng" phải nhảy qua 3 thư mục. Quan trọng hơn,
+gom hết vào `AppModule` thì **mất tính đóng gói của Nest**: provider trong một
+module vốn là private trừ khi `exports`. Ví dụ hiện tại `HealthService` không
+được export nên không feature nào khác inject được nó — đó là ranh giới thật,
+do DI container ép, không phải quy ước.
 
 Chiều phụ thuộc **chỉ đi vào trong**:
 
@@ -83,32 +81,59 @@ Quy tắc này được **ép bằng ESLint** (`no-restricted-imports` trong
 `eslint.config.mjs`), nên `pnpm lint` sẽ fail nếu ai đó vẽ mũi tên ngược —
 không phụ thuộc vào việc nhớ hay review thủ công.
 
+## Quy trình SDD
+
+Luật dự án nằm ở [`.sdd/constitution.md`](.sdd/constitution.md) — nguyên tắc:
+**rule không có máy kiểm thì chỉ là lời khuyên.** Rule máy kiểm được chạy trong
+một lệnh:
+
+```bash
+pnpm check    # = check-constitution.sh + lint + test — Definition of Done
+```
+
+- Feature mới: copy `.sdd/specs/_template.md` thành
+  `.sdd/specs/feat-{name}/SPEC.md` + `TASKS.md` **trước khi code**. Mỗi
+  acceptance criterion trong SPEC phải có một test. Ví dụ mẫu:
+  [`feat-health`](.sdd/specs/feat-health/SPEC.md).
+- Quyết định kiến trúc: `.sdd/rfcs/ADR-NNN-*.md` — viết một lần, không sửa
+  lịch sử.
+- CI (`.github/workflows/ci.yml`) chạy gitleaks + `pnpm check` + `pnpm build`
+  trên mọi PR. Job check **cố ý không có Postgres**: test "unit" nào chạm DB
+  sẽ fail ở đó theo cấu tạo.
+
 ## Chạy
 
 ```bash
 pnpm install
 cp .env.example .env
-pnpm dev                # watch mode (alias của start:dev)
-pnpm start              # chạy một lần
-pnpm build && pnpm start:prod
+docker compose up -d postgres   # Postgres 17, đợi pg_isready mới healthy
+pnpm dev                        # watch mode (alias của start:dev)
+pnpm build && pnpm start:prod   # chạy bản build
+```
+
+Chạy cả app lẫn DB trong Docker (multi-stage build, chi tiết ở
+[`docs/qa/010`](docs/qa/010-dockerfile-va-compose-cho-app-nestjs.md)):
+
+```bash
+docker compose up --build
 ```
 
 > **Cổng 3000 có thể đã bị chiếm.** Nếu gặp `EADDRINUSE`, kiểm tra bằng
 > `lsof -nP -iTCP:3000 -sTCP:LISTEN` rồi chạy `PORT=3100 pnpm dev`.
 
-> **`tsBuildInfoFile` phải nằm trong `dist/`.** `nest-cli.json` đặt
-> `deleteOutDir: true` nên `dist/` bị xoá mỗi lần build. Nếu file
-> `.tsbuildinfo` nằm ngoài `dist/`, nó sống sót qua lần xoá đó và `tsc` sẽ
-> tưởng "không có gì thay đổi" nên **không emit gì cả** — build vẫn exit 0
-> nhưng `pnpm start` báo `Cannot find module dist/main`. Đừng chuyển nó ra
-> ngoài `dist/`.
+> **`dist/` không được tự xoá khi build.** Repo không còn `nest-cli.json`
+> (`nest build` chạy bằng default) nên không có `deleteOutDir` — đổi cấu trúc
+> thư mục xong `dist/` có thể còn file cũ; lạ lạ thì `rm -rf dist` rồi build
+> lại. `tsBuildInfoFile` phải nằm **trong** `dist/` để bị xoá cùng: nếu nó
+> sống sót một mình, `tsc` tưởng "không có gì thay đổi" nên không emit gì cả —
+> build exit 0 nhưng `pnpm start:prod` báo `Cannot find module dist/main`.
 
 ## Cấu hình
 
-Toàn bộ env được khai báo trong **một** zod schema (`src/server/config/env.schema.ts`)
-và validate **một lần lúc boot**. Thiếu hoặc sai một biến thì process in danh
-sách lỗi rồi thoát với exit code 1 — không có trạng thái "chạy với config nửa
-vời".
+Toàn bộ env được khai báo trong **một** zod schema
+(`src/server/config/env.schema.ts`) và validate **một lần lúc boot**. Thiếu
+hoặc sai một biến thì process in danh sách lỗi rồi thoát với exit code 1 —
+không có trạng thái "chạy với config nửa vời".
 
 Chạy `DATABASE_URL=mysql://user:pass@localhost:3306/db JWT_SECRET=ngan pnpm start`:
 
@@ -121,8 +146,8 @@ Xem .env.example để biết danh sách biến bắt buộc.
 
 `echo $?` ra `1`. Không có dòng `Starting Nest application` nào phía trên — mọi
 lỗi được liệt kê một lượt để sửa một vòng là xong, thay vì boot-sửa-boot-sửa
-từng biến. Luồng: `config.module.ts:29` (`validate: validateEnvOrExit`) →
-`env.validation.ts:73` (`process.exit(1)`). Nó **không** nằm trong `main.ts`:
+từng biến. Luồng: `config.module.ts` (`validate: validateEnvOrExit`) →
+`env.validation.ts` (`process.exit(1)`). Nó **không** nằm trong `main.ts`:
 Nest gọi lúc nạp `ConfigModule`, tức trước cả `NestFactory.create()`.
 
 | Biến | Bắt buộc | Mặc định |
@@ -136,9 +161,9 @@ Nest gọi lúc nạp `ConfigModule`, tức trước cả `NestFactory.create()`
 | `LOG_LEVEL` | | `info` |
 
 Đọc config **chỉ** qua `EnvService` (`env.get('PORT')` trả về `number` thật, gõ
-sai tên biến là lỗi compile) — không `process.env.X` ở bất kỳ đâu khác.
-`.env.test` được commit sẵn (toàn giá trị giả) để `pnpm test` chạy được trên
-clone mới.
+sai tên biến là lỗi compile) — không `process.env.X` ở bất kỳ đâu khác
+(SEC-04, máy kiểm trong `check-constitution.sh`). `.env.test` được commit sẵn
+(toàn giá trị giả) để `pnpm test` chạy được trên clone mới.
 
 Thêm một biến mới: xem checklist trong
 [`docs/guides/001-config-va-logging.md`](docs/guides/001-config-va-logging.md).
@@ -174,12 +199,13 @@ vẫn có id; và chuỗi `SIEU-BI-MAT` không xuất hiện ở bất kỳ đâ
 - Ngoài production, `pino-pretty` render lại cho dễ đọc trên terminal.
 
 > **Middleware correlation id gắn bằng `app.use()` trong
-> [`src/server/app.setup.ts`](src/server/app.setup.ts), không phải `MiddlewareConsumer.forRoutes()`.**
-> Nest áp `setGlobalPrefix` lên cả middleware đăng ký kiểu Nest, nên
-> `forRoutes('{*path}')` chỉ khớp `/api/**` và các route trong `exclude` —
-> `/`, `/favicon.ico`, URL gõ sai đều không có log lẫn `x-request-id`. Đây từng
-> là lỗi thật trong repo này; `test/smoke.e2e-spec.ts` khoá lại để nó không
-> quay về.
+> [`src/server/app.setup.ts`](src/server/app.setup.ts), không phải
+> `MiddlewareConsumer.forRoutes()`.** Nest áp `setGlobalPrefix` lên cả
+> middleware đăng ký kiểu Nest, nên `forRoutes('{*path}')` chỉ khớp `/api/**`
+> và các route trong `exclude` — `/`, `/favicon.ico`, URL gõ sai đều không có
+> log lẫn `x-request-id`. Đây từng là lỗi thật trong repo này; bộ smoke test
+> từng khoá nó đã gỡ cùng `test/` — cẩn trọng khi đụng `app.setup.ts` (LOG-01
+> chỉ còn máy kiểm mức grep).
 
 > **Log boot của Nest đều mang cùng một timestamp.** Đó là do `bufferLogs:
 > true` — buffer được xả một lượt sau `useLogger()`, nên timestamp là lúc
@@ -209,60 +235,62 @@ Việc kiểm tra dependency thuộc về **readiness** ("instance này nhận t
 ## Kiểm thử
 
 ```bash
-pnpm test        # unit — logic từng tầng, chạy cô lập
-pnpm test:e2e    # e2e  — bật app thật, gọi HTTP thật
-pnpm lint        # gồm cả kiểm tra chiều phụ thuộc giữa các tầng
+pnpm test     # unit — *.spec.ts cạnh source, không DB, không network
+pnpm lint     # gồm cả kiểm tra chiều phụ thuộc giữa các tầng
+pnpm check    # constitution + lint + test — Definition of Done
 ```
 
-`test/smoke.e2e-spec.ts` không dựng app trong bộ nhớ mà `spawn` hẳn một tiến
-trình Node chạy `src/server/main.ts`, rồi assert trên **stdout và exit code thật**.
-Những tiêu chí quan trọng nhất chỉ tồn tại ở mức process và không thể chứng
-minh bằng test in-memory: `process.exit(1)` sẽ giết luôn jest, còn log JSON thì
-không đi qua stdout thật.
+Phân tầng test theo STD-02 trong constitution: unit chạy không cần gì ngoài
+`.env.test`; integration (`*.integration.spec.ts`, chạy với Postgres thật) sẽ
+thêm khi tầng data có driver thật; bộ e2e/smoke trong `test/` đã gỡ — các đảm
+bảo mức process (exit code, stdout JSON thật, middleware chạy mọi route) hiện
+**không còn test khoá**, sẽ khoá lại khi `test/` hồi sinh.
 
 ## Bằng chứng
 
-Mỗi đảm bảo dưới đây trỏ tới code thi hành nó và test khoá nó lại. Chạy
-`pnpm test && pnpm test:e2e` để tự xác minh, không phải tin những dòng log dán
-trong README này.
+Mỗi đảm bảo dưới đây trỏ tới code thi hành nó và test/máy kiểm khoá nó lại.
+Chạy `pnpm check` để tự xác minh, không phải tin những dòng log dán trong
+README này.
 
 | Đảm bảo | Thi hành ở | Khoá bởi |
 |---|---|---|
-| Env sai → in lỗi, `exit 1`, **không** listen | `config/config.module.ts:26` → `config/env.validation.ts:73` | `test/smoke.e2e-spec.ts` (3 test, assert exit code + `stdout` không có `Nest application successfully started`) |
-| zod validate **một lần** lúc boot, không nuốt lỗi | `config/env.schema.ts`, `config/env.validation.ts:31` | `config/env.validation.spec.ts` (7 test) |
-| Mọi dòng log là JSON parse được | `logging/pino.provider.ts:25` | `test/smoke.e2e-spec.ts` — `JSON.parse` từng dòng stdout của process thật |
-| Mỗi request có `requestId`, trả về qua `x-request-id` | `logging/request-id.middleware.ts:30,33` | `test/smoke.e2e-spec.ts`, `test/health.e2e-spec.ts` |
-| `requestId` đi xuyên tầng qua child logger + ALS | `request-id.middleware.ts:35,62`, `logging/request-context.ts:24` | `logging/request-id.middleware.spec.ts`, và smoke assert dòng `context:"HealthService"` mang đúng id |
-| Nhận lại `x-request-id` của upstream, không sinh mới | `request-id.middleware.ts:29-30` | cả ba file test trên |
-| Middleware chạy cho **mọi** đường dẫn, kể cả ngoài `/api` | `app.setup.ts:35-36` | `test/smoke.e2e-spec.ts` (4 đường dẫn, gồm `/` và `/favicon.ico`) |
-| Secret bị che, không lọt vào log | `logging/pino.provider.ts:47` (`redact`) | `logging/pino.provider.spec.ts` — 12 test, mỗi path một test, chạy trên **chính** `createRootLogger` |
-| `LOG_LEVEL` lọc output theo ngưỡng | `logging/pino.provider.ts:29` | `logging/pino.provider.spec.ts` (3 test) |
+| zod validate **một lần** lúc boot, không nuốt lỗi | `config/env.schema.ts`, `config/env.validation.ts` | `config/env.validation.spec.ts` (7 test) |
+| `GET /health` trả 200 `{"status":"ok"}`, không chạm DB | `modules/health/` | `health.controller.spec.ts`, `health.service.spec.ts` |
+| `requestId` đi xuyên tầng qua child logger + ALS | `logging/request-id.middleware.ts`, `logging/request-context.ts` | `logging/request-id.middleware.spec.ts` |
+| Nhận lại `x-request-id` của upstream, không sinh mới | `logging/request-id.middleware.ts` | `logging/request-id.middleware.spec.ts` |
+| Secret bị che, không lọt vào log | `logging/pino.provider.ts` (`redact`) | `logging/pino.provider.spec.ts` — 12 test, mỗi path một test |
+| `LOG_LEVEL` lọc output theo ngưỡng | `logging/pino.provider.ts` | `logging/pino.provider.spec.ts` (3 test) |
 | Chiều phụ thuộc `http → domain → data` | `eslint.config.mjs` (`no-restricted-imports`) | `pnpm lint` |
+| `process.env` chỉ trong `config/`; `console.*` chỉ ở đường boot-fatal | quy ước SEC-04 / ARCH-01 | `scripts/check-constitution.sh` |
+| Middleware requestId mount cho **mọi** route (`app.use`) | `app.setup.ts` | `check-constitution.sh` (grep — khoá hành vi đầy đủ chờ e2e hồi sinh) |
 
-Log và thông báo lỗi trích trong README này được copy nguyên văn từ output
-thật, kèm lệnh sinh ra chúng — không phải viết tay minh hoạ.
+Đảm bảo "env sai → exit 1, không listen" và "mọi dòng log là JSON parse được"
+từng được khoá bằng smoke test spawn process thật — đã gỡ cùng `test/`, xem
+mục Kiểm thử.
 
 ## Thêm một tính năng mới
 
-Ví dụ `products` — tạo `src/server/modules/products/`, đi từ trong ra ngoài:
+Ví dụ `products` — theo SDD, đi từ spec vào trong rồi ra ngoài:
 
+0. Viết `.sdd/specs/feat-products/SPEC.md` + `TASKS.md` (copy từ
+   `_template.md`) — hành vi, edge case, acceptance criteria **trước khi code**
 1. `data/product.db.repository.ts` — truy vấn DB, trả về dữ liệu thô
 2. `domain/product.service.ts` — quy tắc nghiệp vụ (giá, tồn kho, giảm giá)
 3. `http/product.controller.ts` — route, DTO + validation, map response
 4. `products.module.ts` — `imports: [DatabaseModule]`, khai báo controller +
    provider. Chỉ `exports` thứ mà feature khác thật sự cần
 5. Thêm `ProductsModule` vào `imports` của `app.module.ts` — **một dòng**
+6. Mỗi acceptance criterion một test; `pnpm check` xanh là Done
 
-Rule lint dùng glob `src/server/**/<layer>/**` nên áp dụng tự động cho mọi feature
-mới, không phải khai báo lại.
+Rule lint dùng glob `src/server/**/<layer>/**` nên áp dụng tự động cho mọi
+feature mới, không phải khai báo lại.
 
 Feature mới **không** cần khai báo gì cho config và logging: `AppConfigModule`
 và `LoggingModule` là `@Global()`, chỉ việc inject `EnvService` / `AppLogger`.
 
 ## Tài liệu
 
-[`docs/`](docs/README.md) lưu kiến thức tích luỹ trong quá trình làm dự án:
-
+- [`.sdd/`](.sdd/constitution.md) — luật dự án, specs từng feature, ADR.
 - [`docs/guides/`](docs/README.md) — tổng hợp theo chủ đề, đọc một file là đủ
   dùng. Hiện có: [Config & Logging](docs/guides/001-config-va-logging.md).
 - [`docs/qa/`](docs/README.md) — từng câu hỏi kiến thức kèm câu trả lời đầy đủ
